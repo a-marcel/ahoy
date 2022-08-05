@@ -194,54 +194,81 @@ class HmRadio {
             }
         }
 
-        void sendControlPacket(uint64_t invId, uint8_t controlCommand) {
-            DPRINTLN(DBG_VERBOSE, F("hmRadio.h:sendControlPacket"));
-            sendCmdPacket(invId, 0x51, 0x81, false);
+        // void sendControlPacket(uint64_t invId, uint8_t controlCommand) {
+        //     DPRINTLN(DBG_VERBOSE, F("hmRadio.h:sendControlPacket"));
+        //     sendCmdPacket(invId, 0x51, 0x81, false);
 
-            mTxBuf[10] = controlCommand;
-            mTxBuf[11] = 0x00;
+        //     mTxBuf[10] = controlCommand;
+        //     mTxBuf[11] = 0x00;
 
-            uint16_t crc = Hoymiles::crc16(&mTxBuf[10], 2);
-            mTxBuf[12] = (crc >> 8) & 0xff;
-            mTxBuf[13] = (crc     ) & 0xff;
+        //     uint16_t crc = Hoymiles::crc16(&mTxBuf[10], 2);
+        //     mTxBuf[12] = (crc >> 8) & 0xff;
+        //     mTxBuf[13] = (crc     ) & 0xff;
 
-            mTxBuf[14] = Hoymiles::crc8(mTxBuf, 14);
-            sendPacket(invId, mTxBuf, 15, false);
-            DPRINT(DBG_INFO, "Transmit (Control) " + String(15) + " | ");
-            dumpBuf(NULL, mTxBuf, 15);
-        }
+        //     mTxBuf[14] = Hoymiles::crc8(mTxBuf, 14);
+        //     sendPacket(invId, mTxBuf, 15, false);
+        //     DPRINT(DBG_INFO, "Transmit (Control) " + String(15) + " | ");
+        //     dumpBuf(NULL, mTxBuf, 15);
+        // }
 
-        void sendPowerLimitPacket(uint64_t invId, uint32_t limit, bool calcCrc = true) {
-            //DPRINTLN(DBG_VERBOSE, F("hmRadio.h:sendCmdPacket"));
-            memset(mTxBuf, 0, MAX_RF_PAYLOAD_SIZE);
-            mTxBuf[0] = 0x51; // message id
-            CP_U32_BigEndian(&mTxBuf[1], (invId  >> 8));
-            CP_U32_BigEndian(&mTxBuf[5], (DTU_ID >> 8));
-            mTxBuf[9]  = 0x81;
-            mTxBuf[10] = 0x0B; 
-            mTxBuf[11] = 0x00;
+        void sendControlPacket(uint64_t invId, uint16_t data, uint8_t cmd) {
+             DPRINTLN(DBG_VERBOSE, F("hmRadio.h:sendControlPacket"));
+             // sendCmdPacket(invId, 0x51, 0x80, false); // 0x80 implementation as original DTU code
+             sendCmdPacket(invId, 0x51, 0x81, false);
+             int cnt = 0;
+             mTxBuf[10] = cmd; // cmd --> 0x0b => Type_ActivePowerContr, 0 on, 1 off, 2 restart, 12 reactive power, 13 power factor
+             mTxBuf[10 + (++cnt)] = 0x00;
+             if (cmd == 11){
+                 // 4 bytes control data
+                 // Power Limit fix point 10 eg. 30 W --> 0d300 = 0x012c
+                 mTxBuf[10 + (++cnt)] = (data*10 >> 8) & 0xff; // 0x01
+                 mTxBuf[10 + (++cnt)] = (data*10     ) & 0xff; // 0x2c
+                 // are these two bytes necessary?
+                 mTxBuf[10 + (++cnt)] = 0x00;
+                 mTxBuf[10 + (++cnt)] = 0x00;
+             }
+             // crc control data
+             uint16_t crc = Hoymiles::crc16(&mTxBuf[10], (cnt+1));
+             mTxBuf[10 + (++cnt)] = (crc >> 8) & 0xff;
+             mTxBuf[10 + (++cnt)] = (crc     ) & 0xff;
+             // crc over all
+             mTxBuf[10 + (++cnt)] = Hoymiles::crc8(mTxBuf, (10+cnt+1));
 
-            uint32_t hm_limt = limit * 10;
+            // dumpBuf(NULL, mTxBuf, 10 + (cnt+1));
+
+             sendPacket(invId, mTxBuf, 10 + (++cnt), true);
+         }
+        // void sendPowerLimitPacket(uint64_t invId, uint32_t limit, bool calcCrc = true) {
+        //     //DPRINTLN(DBG_VERBOSE, F("hmRadio.h:sendCmdPacket"));
+        //     memset(mTxBuf, 0, MAX_RF_PAYLOAD_SIZE);
+        //     mTxBuf[0] = 0x51; // message id
+        //     CP_U32_BigEndian(&mTxBuf[1], (invId  >> 8));
+        //     CP_U32_BigEndian(&mTxBuf[5], (DTU_ID >> 8));
+        //     mTxBuf[9]  = 0x81;
+        //     mTxBuf[10] = 0x0B; 
+        //     mTxBuf[11] = 0x00;
+
+        //     uint32_t hm_limt = limit * 10;
             
-            // mTxBuf[12] = 0x01; // 30,0W 2 bits
-            // mTxBuf[13] = 0xF4;
-            mTxBuf[12] = (hm_limt >> 8) & 0xff;
-            mTxBuf[13] = (hm_limt     ) & 0xff;
+        //     // mTxBuf[12] = 0x01; // 30,0W 2 bits
+        //     // mTxBuf[13] = 0xF4;
+        //     mTxBuf[12] = (hm_limt >> 8) & 0xff;
+        //     mTxBuf[13] = (hm_limt     ) & 0xff;
 
-            mTxBuf[14] = 0x01; 
-            mTxBuf[15] = 0x00; 
+        //     mTxBuf[14] = 0x01; 
+        //     mTxBuf[15] = 0x00; 
 
-            if(calcCrc) {
-                uint16_t crc = Hoymiles::crc16(&mTxBuf[10], 6);
-                mTxBuf[16] = (crc >> 8) & 0xff;
-                mTxBuf[17] = (crc     ) & 0xff;
+        //     if(calcCrc) {
+        //         uint16_t crc = Hoymiles::crc16(&mTxBuf[10], 6);
+        //         mTxBuf[16] = (crc >> 8) & 0xff;
+        //         mTxBuf[17] = (crc     ) & 0xff;
 
-                mTxBuf[18] = Hoymiles::crc8(mTxBuf, 18);
-                sendPacket(invId, mTxBuf, 19, false);
-                DPRINT(DBG_INFO, "Transmit (Limit) " + String(19) + " | ");
-                dumpBuf(NULL, mTxBuf, 19);
-            }
-        }
+        //         mTxBuf[18] = Hoymiles::crc8(mTxBuf, 18);
+        //         sendPacket(invId, mTxBuf, 19, false);
+        //         DPRINT(DBG_INFO, "Transmit (Limit) " + String(19) + " | ");
+        //         dumpBuf(NULL, mTxBuf, 19);
+        //     }
+        // }
 
         bool checkPaketCrc(uint8_t buf[], uint8_t *len, uint8_t rxCh) {
             //DPRINTLN(DBG_VERBOSE, F("hmRadio.h:checkPaketCrc"));

@@ -11,6 +11,7 @@ namespace hoymiles {
         TURN_ON = 0x00, 
         TURN_OFF = 0x01, 
         RESTART = 0x02,
+        POWER_LIMIT = 0x0b,
         CLEAN_STATE_ALARM = 0x14
     }; 
 
@@ -144,21 +145,29 @@ namespace hoymiles {
                         // mSys->Radio.dumpBuf("Payload ", p->packet, len);
 
                         Inverter<> *iv = mSys->findInverter(&p->packet[1]);
-                        if(NULL != iv) {
+                        if(NULL != iv&& p->packet[0] == (0x15 + 0x80)) { // response from get all information command
                             uint8_t *pid = &p->packet[9];
-                            if((*pid & 0x7F) < 5) {
-                                memcpy(mPayload[iv->id].data[(*pid & 0x7F) - 1], &p->packet[10], len-11);
-                                mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
-                            }
+                            if (*pid == 0x00) {
+                                ESP_LOGD(TAG, "fragment number zero received and ignored");
+                            } else {
+                                if((*pid & 0x7F) < 5) {
+                                    memcpy(mPayload[iv->id].data[(*pid & 0x7F) - 1], &p->packet[10], len-11);
+                                    mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
+                                }
 
-                            if((*pid & 0x80) == 0x80) {
-                                if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
-                                    mPayload[iv->id].maxPackId = (*pid & 0x7f);
+                                if((*pid & 0x80) == 0x80) {
+                                    if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
+                                        mPayload[iv->id].maxPackId = (*pid & 0x7f);
 
-                                    if(*pid > 0x81)
-                                        mLastPacketId = *pid;
+                                        if(*pid > 0x81)
+                                            mLastPacketId = *pid;
+                                }
                             }
                         }
+                        if(NULL != iv && p->packet[0] == (0x51 + 0x80)) { // response from dev control command q'n'd
+                            // snprintf(respTopic, 64, "%s/devcontrol/%d/resp", mMqtt.getTopic(), iv->id);
+                            // mMqtt.sendMsg2(respTopic,(const char*)p->packet,false);
+                        }                        
                     }
                 }
                 mSys->BufCtrl.popBack();
@@ -216,8 +225,19 @@ namespace hoymiles {
                             ESP_LOGV(TAG, "Requesting Inverter SN %s", buffer);
                         // }
 
-                        mSys->Radio.sendTimePacket(iv->radioId.u64, mPayload[iv->id].ts);
-                        mRxTicker = 0;
+                        if(iv->devControlRequest) {
+                            // if(mSerialDebug)
+                                ESP_LOGV(TAG, "Devcontrol request %s power limit %s", String(iv->devControlCmd), String(iv->powerLimit))
+                                // DPRINTLN(DBG_INFO, F("Devcontrol request ") + String(iv->devControlCmd) + F(" power limit ") + String(iv->powerLimit));
+
+                            mSys->Radio.sendControlPacket(iv->radioId.u64, uint16_t(iv->powerLimit),iv->devControlCmd);
+
+                            // ToDo: Only set Request to false if succesful executed
+                            iv->devControlRequest = false;
+                        } else {
+                            mSys->Radio.sendTimePacket(iv->radioId.u64, mPayload[iv->id].ts);
+                            mRxTicker = 0;
+                        }
                     }
                 }
                 else {
@@ -236,29 +256,31 @@ namespace hoymiles {
         ESP_LOGI(TAG, "Sending OnOff: %d", state);
 
         if (state) {
-            mSys->Radio.sendControlPacket(invId, control_commands::TURN_ON);
+            mSys->Radio.sendControlPacket(invId, NULL, control_commands::TURN_ON);
         } else {
-            mSys->Radio.sendControlPacket(invId, control_commands::TURN_OFF);
+            mSys->Radio.sendControlPacket(invId, NULL, control_commands::TURN_OFF);
         }
     }
 
     void HoymilesComponent::sendRestartPacket(uint64_t invId) {
         ESP_LOGI(TAG, "Sending Restart");
 
-        mSys->Radio.sendControlPacket(invId, control_commands::RESTART);
+        mSys->Radio.sendControlPacket(invId, NULL, control_commands::RESTART);
     }
 
     void HoymilesComponent::sendCleanStatePacket(uint64_t invId) {
         ESP_LOGI(TAG, "Sending Command to clean alarm and state");
 
-        mSys->Radio.sendControlPacket(invId, control_commands::CLEAN_STATE_ALARM);
+        mSys->Radio.sendControlPacket(invId, NULL, control_commands::CLEAN_STATE_ALARM);
     }
 
 
     void HoymilesComponent::sendLimitPacket(uint64_t invId, uint32_t limit) {
         ESP_LOGI(TAG, "Sending Limitation: %i", limit);
 
-        mSys->Radio.sendPowerLimitPacket(invId, limit, true);
+        mSys->Radio.sendControlPacket(invId, limit, control_commands::POWER_LIMIT);
+
+        // mSys->Radio.sendPowerLimitPacket(invId, limit, true);
     }
 
 
