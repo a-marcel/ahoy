@@ -18,7 +18,8 @@ namespace hoymiles {
         }    
 
     void HoymilesSwitch::setup() {
-        ESP_LOGI(TAG, "Switch %s", this->parent_);
+        ESP_LOGI(TAG, "Switch %s", this->inverter_id_);
+
     }    
 
 
@@ -27,7 +28,7 @@ namespace hoymiles {
             return;
         }
 
-        Inverter<> *iv = this->parent_->get_inverter(this->inviter_id_);
+        Inverter<> *iv = this->parent_->get_inverter(this->inverter_id_);
 
         this->parent_->sendTurnOnOffPacket(iv->radioId.u64, state);
 

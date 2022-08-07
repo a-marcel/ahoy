@@ -15,7 +15,7 @@ static const char *const TAG = "hoymiles.limit";
     void HoymilesLimit::control(float value) {
         ESP_LOGI(TAG, "Limit %f", value);
 
-        Inverter<> *iv = this->parent_->get_inverter(this->inviter_id_);
+        Inverter<> *iv = this->parent_->get_inverter(this->inverter_id_);
 
         this->parent_->sendLimitPacket(iv->radioId.u64, value);
 

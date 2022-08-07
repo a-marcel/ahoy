@@ -13,9 +13,9 @@ class HoymilesSwitch : public switch_::Switch, public Component, public hoymiles
         void write_state(bool state) override;
         void dump_config() override;
 
-        void set_inverter_id(char *inverterId) { this->inviter_id_ = inverterId; }
+        void set_inverter_id(char *inverterId) { this->inverter_id_ = inverterId; }
     protected:
-        char *inviter_id_;
+        char *inverter_id_;
 };
 
 } //namespace hoymiles

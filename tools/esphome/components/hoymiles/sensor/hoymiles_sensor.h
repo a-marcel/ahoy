@@ -17,7 +17,7 @@ namespace hoymiles {
 
             float get_setup_priority() const override { return setup_priority::LATE; }
 
-            void set_inverter_id(char *inverterId) { this->inviter_id_ = inverterId; }
+            void set_inverter_id(char *inverterId) { this->inverter_id_ = inverterId; }
 
             // void set_component_source(const char * 	source) {}
             void set_dc_voltage_sensor(int channel, sensor::Sensor *obj) { this->dc_channels_[channel].voltage_sensor_ = obj; }
@@ -39,7 +39,7 @@ namespace hoymiles {
             void set_general_efficiency_sensor(sensor::Sensor *obj) { this->general_.efficiency_sensor_ = obj; }
 
         protected:
-            char *inviter_id_;
+            char *inverter_id_;
 
             struct HoymilesDCChannel {
                 sensor::Sensor *voltage_sensor_{nullptr};

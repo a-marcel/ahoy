@@ -48,7 +48,7 @@ external_components:
 hoymiles:
     inverters:
       - id: hm400
-        serialnumber: "0x1234567890"
+        serialnumber: "1234567890"
     cs_pin: 5
     ce_pin: 4
     irq_pin: 17

@@ -7,7 +7,7 @@ namespace hoymiles {
     static const char *TAG = "hoymiles.sensor";
 
     void HoymilesSensor::setup() {
-        ESP_LOGI(TAG, "Sensor %s, %s", this->inviter_id_, this->parent_);
+        ESP_LOGI(TAG, "Sensor %s", this->inverter_id_);
     }
 
     void HoymilesSensor::update() {
@@ -15,7 +15,7 @@ namespace hoymiles {
             return;
         }
 
-        Inverter<> *iv = this->parent_->get_inverter(this->inviter_id_);
+        Inverter<> *iv = this->parent_->get_inverter(this->inverter_id_);
 
         char topic[30], val[10];
 

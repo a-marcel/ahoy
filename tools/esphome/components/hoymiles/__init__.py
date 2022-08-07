@@ -1,6 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import pins
+import re
 from esphome.components import (
     time, 
     number,
@@ -39,12 +40,29 @@ CONF_AMPLIFIER_POWER = "amplifier_power"
 
 CONF_LIMITATION="limitation"
 
+def validate_number(value):
+
+    if not isinstance(value, str):
+        raise cv.Invalid(f"Serial number should be a string (quoted with \"\") and only contains numbers, got {value}")
+
+    value = cv.string(value)
+
+    match = re.findall("[^0-9]", value)
+
+    if len(match) > 0:
+        raise cv.Invalid(f"Serial number should be a string (quoted with \"\") and only contains numbers, got {value}")
+
+    return value;
+
+
+
 HOYMILES_SCHEMA_INVERTER = cv.Schema({
     # cv.GenerateID(): cv.declare_id("hoymiles_inverter_id"),
     # cv.Required(CONF_ID): cv.valid_name,
     cv.Required(CONF_ID): cv.validate_id_name,
-    cv.Required(CONF_SERIAL_NUMBER): cv.string,
+    cv.Required(CONF_SERIAL_NUMBER): validate_number,
 })
+
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
@@ -106,7 +124,7 @@ def to_code(config):
 
     count = 0;
     for inverters in config[CONF_INVERTERS]:
-        cg.add(var.add_inverter(count, inverters[CONF_ID], inverters[CONF_SERIAL_NUMBER]));
+        cg.add(var.add_inverter(count, inverters[CONF_ID], "0x" + inverters[CONF_SERIAL_NUMBER]));
         count = count + 1;    
 
 
