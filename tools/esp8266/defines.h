@@ -20,8 +20,8 @@
 // VERSION
 //-------------------------------------
 #define VERSION_MAJOR       0
-#define VERSION_MINOR       4
-#define VERSION_PATCH       26
+#define VERSION_MINOR       5
+#define VERSION_PATCH       3
 
 
 //-------------------------------------
@@ -53,10 +53,14 @@ typedef struct {
 #define INV_CH_CH_NAME_LEN  MAX_NUM_INVERTERS * MAX_NAME_LENGTH * 4 // (4 channels)
 #define INV_INTERVAL_LEN    2                                       // uint16_t
 #define INV_MAX_RTRY_LEN    1                                       // uint8_t
+#define INV_PWR_LIM_LEN     MAX_NUM_INVERTERS * 2                   // uint16_t 
 
 #define PINOUT_LEN          3 // 3 pins: CS, CE, IRQ
 
 #define RF24_AMP_PWR_LEN    1
+
+#define NTP_ADDR_LEN        32 // DNS Name
+#define NTP_PORT_LEN        2 // uint16_t
 
 #define MQTT_ADDR_LEN         32 // DNS Name
 #define MQTT_USER_LEN         16
@@ -89,8 +93,12 @@ typedef struct {
 #define ADDR_INV_CH_NAME    ADDR_INV_CH_PWR    + INV_CH_CH_PWR_LEN
 #define ADDR_INV_INTERVAL   ADDR_INV_CH_NAME   + INV_CH_CH_NAME_LEN
 #define ADDR_INV_MAX_RTRY   ADDR_INV_INTERVAL  + INV_INTERVAL_LEN
+#define ADDR_INV_PWR_LIM    ADDR_INV_MAX_RTRY  + INV_MAX_RTRY_LEN
 
-#define ADDR_MQTT_ADDR      ADDR_INV_MAX_RTRY  + INV_MAX_RTRY_LEN
+#define ADDR_NTP_ADDR       ADDR_INV_PWR_LIM   + INV_PWR_LIM_LEN //Bugfix #125
+#define ADDR_NTP_PORT       ADDR_NTP_ADDR      + NTP_ADDR_LEN
+
+#define ADDR_MQTT_ADDR      ADDR_NTP_PORT      + NTP_PORT_LEN
 #define ADDR_MQTT_USER      ADDR_MQTT_ADDR     + MQTT_ADDR_LEN
 #define ADDR_MQTT_PWD       ADDR_MQTT_USER     + MQTT_USER_LEN
 #define ADDR_MQTT_TOPIC     ADDR_MQTT_PWD      + MQTT_PWD_LEN
