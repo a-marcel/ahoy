@@ -188,12 +188,12 @@ class HmRadio {
                 mTxBuf[10 + (++cnt)] = 0x00;
             }
             // crc control data
-            uint16_t crc = crc16(&mTxBuf[10], cnt+1);
+            uint16_t crc = Hoymiles::crc16(&mTxBuf[10], cnt+1);
             mTxBuf[10 + (++cnt)] = (crc >> 8) & 0xff;
             mTxBuf[10 + (++cnt)] = (crc     ) & 0xff;
             // crc over all
             cnt +=1;
-            mTxBuf[10 + cnt] = crc8(mTxBuf, 10 + cnt);
+            mTxBuf[10 + cnt] = Hoymiles::crc8(mTxBuf, 10 + cnt);
 
             sendPacket(invId, mTxBuf, 10 + (++cnt), true);
         }
@@ -226,34 +226,6 @@ class HmRadio {
                 sendPacket(invId, mTxBuf, 11, false);
             }
         }
-
-        void sendControlPacket(uint64_t invId, uint16_t data, uint8_t cmd) {
-             DPRINTLN(DBG_VERBOSE, F("hmRadio.h:sendControlPacket"));
-             // sendCmdPacket(invId, 0x51, 0x80, false); // 0x80 implementation as original DTU code
-             sendCmdPacket(invId, 0x51, 0x81, false);
-             int cnt = 0;
-             mTxBuf[10] = cmd; // cmd --> 0x0b => Type_ActivePowerContr, 0 on, 1 off, 2 restart, 12 reactive power, 13 power factor
-             mTxBuf[10 + (++cnt)] = 0x00;
-             if (cmd == 11){
-                 // 4 bytes control data
-                 // Power Limit fix point 10 eg. 30 W --> 0d300 = 0x012c
-                 mTxBuf[10 + (++cnt)] = (data*10 >> 8) & 0xff; // 0x01
-                 mTxBuf[10 + (++cnt)] = (data*10     ) & 0xff; // 0x2c
-                 // are these two bytes necessary?
-                 mTxBuf[10 + (++cnt)] = 0x00;
-                 mTxBuf[10 + (++cnt)] = 0x00;
-             }
-             // crc control data
-             uint16_t crc = Hoymiles::crc16(&mTxBuf[10], (cnt+1));
-             mTxBuf[10 + (++cnt)] = (crc >> 8) & 0xff;
-             mTxBuf[10 + (++cnt)] = (crc     ) & 0xff;
-             // crc over all
-             mTxBuf[10 + (++cnt)] = Hoymiles::crc8(mTxBuf, (10+cnt+1));
-
-            // dumpBuf(NULL, mTxBuf, 10 + (cnt+1));
-
-             sendPacket(invId, mTxBuf, 10 + (++cnt), true);
-         }
 
         bool checkPaketCrc(uint8_t buf[], uint8_t *len, uint8_t rxCh) {
             //DPRINTLN(DBG_VERBOSE, F("hmRadio.h:checkPaketCrc"));

@@ -26,7 +26,7 @@ namespace hoymiles {
 
                     snprintf(topic, 30, "%s/ch%d/%s", iv->name, iv->assign[i].ch, iv->getFieldName(i));
                                         snprintf(val, 10, "%.3f %s", iv->getValue(i), iv->getUnit(i));
-                                        DPRINTLN(DBG_INFO, String(topic) + ": " + String(val));
+                    ESP_LOGI(TAG, "%s: %s", String(topic), String(val));
 
 
                     if (iv->assign[i].ch == 0) {
@@ -85,6 +85,8 @@ namespace hoymiles {
                     }
                 }
             }
+        } else {
+            ESP_LOGI(TAG, "Data not available for %lld", this->parent_->getTimestamp());
         }
     
     }
