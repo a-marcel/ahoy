@@ -34,6 +34,10 @@ namespace hoymiles {
     uint32_t mUpdateTicker;
     uint16_t mUpdateInterval;
 
+    // esphome custom interval
+    uint8_t mNtpUpdateCounter;
+    uint16_t mNtpUpdateInterval;
+
     HmSystemType *mSys;
 
     invPayload_t mPayload[MAX_NUM_INVERTERS];
@@ -43,12 +47,7 @@ namespace hoymiles {
     static void processPayload(bool retransmit);
     static bool buildPayload(uint8_t id);
 
-    static char* C_dumpBuf(uint8_t buf[], uint8_t len);
-
-    // static String C_dumpBuf(uint8_t buf[], uint8_t len);
-    static String C_DHEX(uint8_t b);
-    static String C_DHEX(uint16_t b);
-    static String C_DHEX(uint32_t b);
+    static const char* C_dumpBuf(uint8_t buf[], uint8_t len);
 
     void HoymilesComponent::setup() {
         ESP_LOGD(TAG, "Setting up Hoymiles Component");
@@ -84,6 +83,11 @@ namespace hoymiles {
         mRxTicker = 0;
         mTimestamp = time_clock->now().timestamp;
 
+        mNtpUpdateCounter = 0;
+        mNtpUpdateInterval = 300; // seconds
+
+        ESP_LOGI(TAG, "Setting inital timestamp %i", mTimestamp);
+
         mSendTicker     = 0xffff;
         mSendInterval   = this->send_interval_;
 
@@ -107,18 +111,29 @@ namespace hoymiles {
     }
 
     void HoymilesComponent::loop() {
-        if(checkTicker(&mUptimeTicker, mUptimeInterval)) {
+        if (checkTicker(&mUptimeTicker, mUptimeInterval)) {
             // mTimestamp++;
             mUptimeSecs++;
-            if(0 != mTimestamp)
-                mTimestamp++;
-            else {
-                // if(!mApActive) {
-                    mTimestamp  = time_clock->now().timestamp;
 
-                    // DPRINTLN("[NTP]: " + getDateTimeStr(mTimestamp));
-                // }
-            }        
+            mNtpUpdateCounter++;
+
+            if (mNtpUpdateCounter > mNtpUpdateInterval || mTimestamp == 0 || mTimestamp < 100000) {
+                ESP_LOGD(TAG, "Sync timestamp with NTP");
+                mTimestamp  = time_clock->now().timestamp;
+                mNtpUpdateCounter = 0;
+            } else {
+                mTimestamp++;
+            }
+
+            // if(0 != mTimestamp)
+            //     mTimestamp++;
+            // else {
+            //     // if(!mApActive) {
+            //         mTimestamp  = time_clock->now().timestamp;
+
+            //         // DPRINTLN("[NTP]: " + getDateTimeStr(mTimestamp));
+            //     // }
+            // }        
         }
 
         mSys->Radio.loop();
@@ -132,9 +147,10 @@ namespace hoymiles {
 
                 if(mSys->Radio.checkPaketCrc(p->packet, &len, p->rxCh)) {
                     // if(mSerialDebug) {
-                        ESP_LOGD(TAG, "Received %i bytes channel %i: ", len, p->rxCh);
-                        // ESP_LOGD(TAG, "Received %i bytes channel %i: %s", len, p->rxCh, C_dumpBuf(p->packet, len));
-                        mSys->Radio.dumpBuf(NULL, p->packet, len);
+                        // ESP_LOGD(TAG, "Received %i bytes channel %i: ", len, p->rxCh);
+                        ESP_LOGD(TAG, "Received %i bytes channel %i: %s", len, p->rxCh, C_dumpBuf(p->packet, len));
+                        // mSys->Radio.dumpBuf(NULL, p->packet, len);
+                        
                     // }                
                     // process buffer only on first occurrence
                     mFrameCnt++;
@@ -216,6 +232,8 @@ namespace hoymiles {
                         mPayload[iv->id].complete  = false;
                         mPayload[iv->id].requested = true;
                         mPayload[iv->id].ts = mTimestamp;
+
+                        ESP_LOGV(TAG, "Setting timestamp: %i", mTimestamp);
 
                         yield();
 
@@ -362,7 +380,7 @@ namespace hoymiles {
                     else {
                         mPayload[iv->id].complete = true;
                         
-                        ESP_LOGI(TAG, "Last recieved TimeStamp: %lld", mPayload[iv->id].ts);
+                        ESP_LOGV(TAG, "Last recieved TimeStamp: %i", mPayload[iv->id].ts);
 
                         iv->ts = mPayload[iv->id].ts;
                         uint8_t payload[128] = {0};
@@ -374,8 +392,8 @@ namespace hoymiles {
                         }
                         offs-=2;
                         
-                        ESP_LOGI(TAG, "Payload (%s): ", String(offs));
-                        mSys->Radio.dumpBuf(NULL, payload, offs);
+                        ESP_LOGI(TAG, "Payload (%s): %s", String(offs), C_dumpBuf(payload, offs));
+                        // mSys->Radio.dumpBuf(NULL, payload, offs);
 
                         mRxSuccess++;
 
@@ -391,42 +409,19 @@ namespace hoymiles {
         }
     }
 
-    static char* C_dumpBuf(uint8_t buf[], uint8_t len) {
+    static const char* C_dumpBuf(uint8_t buf[], uint8_t len) {
 
-        char buffer [len * 2];
+        char buffer [len * 3];
+
+        std::string result = "";
+
 
         for(uint8_t i = 0; i < len; i++) {
-            // sprintf(&buffer[2*i], "%02x", buf[i]);
-
-            // Serial.print(C_DHEX(buf[i]));
-            // result = result + String(C_DHEX(buf[i])) + " ";
-            // result.concat(String(C_DHEX(buf[i])));
-            // result += " " + String(C_DHEX(buf[i]));
+            result.append(format_hex_pretty(buf[i]));
+            result.append(" ");
         }
-        // ESP_LOGI(TAG, "test %s", buffer);
 
-        return buffer;
-    }
-
-    static String C_DHEX(uint8_t b) {
-        if( b<0x10 ) return "0";
-        return String(b,HEX);
-    }
-    static String C_DHEX(uint16_t b) {
-        if( b<0x10 ) return "000";
-        else if( b<0x100 ) return "00";
-        else if( b<0x1000 ) return "0";
-        return String(b,HEX);
-    }
-    static String C_DHEX(uint32_t b) {
-        if( b<0x10 ) return F("0000000");
-        else if( b<0x100 ) return "000000";
-        else if( b<0x1000 ) return "00000";
-        else if( b<0x10000 ) return "0000";
-        else if( b<0x100000 ) return "000";
-        else if( b<0x1000000 ) return "00";
-        else if( b<0x10000000 ) return "0";
-        return String(b,HEX);
+        return result.c_str();
     }
 
 

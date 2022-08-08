@@ -198,8 +198,6 @@ button:
 ## 6. Issues
 
 ### 6.1 Open Issues
-#### Console logging is not showing the recieved data
-Currently the debug information is send directly to Serial and cannot be displayed in HomeAssistant when connected via browser
 
 ### 6.2 Closes Issues
 ### Esp8266 code is not working with ESP32
@@ -207,6 +205,9 @@ Some minor differences in the original ahoy code. The F("String") macro returns 
 
 ### Crc16 and crc8 already exists 
 The Esphome enviroment declares crc8 and crc16 globally. It's required to wrap the ahoy CRC functionally into an own namespace
+
+#### Console logging is not showing the recieved data
+Currently the debug information is send directly to Serial and cannot be displayed in HomeAssistant when connected via browser
 
 ## 7. Support
 
