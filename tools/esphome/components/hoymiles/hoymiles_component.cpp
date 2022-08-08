@@ -361,6 +361,9 @@ namespace hoymiles {
                     }
                     else {
                         mPayload[iv->id].complete = true;
+                        
+                        ESP_LOGI(TAG, "Last recieved TimeStamp: %lld", mPayload[iv->id].ts);
+
                         iv->ts = mPayload[iv->id].ts;
                         uint8_t payload[128] = {0};
                         uint8_t offs = 0;
