@@ -53,6 +53,8 @@ namespace hoymiles {
         ESP_LOGD(TAG, "Setting up Hoymiles Component");
         uint16_t modPwr[4];
 
+        memset(mPayload, 0, (MAX_NUM_INVERTERS * sizeof(invPayload_t)));
+
         mSys = new HmSystemType();
 
         mSys->Radio.AmplifierPower = this->amplifier_power_;
@@ -60,6 +62,8 @@ namespace hoymiles {
         mSys->Radio.pinCs  = this->cs_pin_->get_pin();
         mSys->Radio.pinCe  = this->ce_pin_->get_pin();
         mSys->Radio.pinIrq = this->irq_pin_->get_pin();
+
+        // mSys->Radio.mSerialDebug = true;
 
         
         for(int i = 0; i < MAX_NUM_INVERTERS; i++) {
@@ -73,8 +77,6 @@ namespace hoymiles {
             }
         }
         mSys->setup();
-
-        memset(mPayload, 0, (MAX_NUM_INVERTERS * sizeof(invPayload_t)));
 
         attachInterrupt(digitalPinToInterrupt(mSys->Radio.pinIrq), handleIntr, FALLING);
 
@@ -148,7 +150,8 @@ namespace hoymiles {
                 if(mSys->Radio.checkPaketCrc(p->packet, &len, p->rxCh)) {
                     // if(mSerialDebug) {
                         // ESP_LOGD(TAG, "Received %i bytes channel %i: ", len, p->rxCh);
-                        ESP_LOGD(TAG, "Received %i bytes channel %i: %s", len, p->rxCh, C_dumpBuf(p->packet, len));
+                        ESP_LOGD(TAG, "RX %iB Ch%i | %s", len, p->rxCh, C_dumpBuf(p->packet, len));
+
                         // mSys->Radio.dumpBuf(NULL, p->packet, len);
                         
                     // }                
@@ -188,6 +191,7 @@ namespace hoymiles {
                 }
                 mSys->BufCtrl.popBack();
             }
+            yield();
 
             if (rxRdy) {
                 processPayload(true);
@@ -211,6 +215,7 @@ namespace hoymiles {
                             mPayload[iv->id].requested = false;
                         mSendLastIvId = ((MAX_NUM_INVERTERS-1) == mSendLastIvId) ? 0 : mSendLastIvId + 1;
                         iv = mSys->getInverterByPos(mSendLastIvId);
+
                     } while((NULL == iv) && ((maxLoop--) > 0));
 
                     if(NULL != iv) {
@@ -245,10 +250,10 @@ namespace hoymiles {
 
                         if(iv->devControlRequest) {
                             // if(mSerialDebug)
-                                ESP_LOGV(TAG, "Devcontrol request %s power limit %s", String(iv->devControlCmd), String(iv->powerLimit))
+                                ESP_LOGV(TAG, "Devcontrol request %s power limit %s", String(iv->devControlCmd), String(iv->powerLimit));
                                 // DPRINTLN(DBG_INFO, F("Devcontrol request ") + String(iv->devControlCmd) + F(" power limit ") + String(iv->powerLimit));
 
-                            mSys->Radio.sendControlPacket(iv->radioId.u64, uint16_t(iv->powerLimit),iv->devControlCmd);
+                            // mSys->Radio.sendControlPacket(iv->radioId.u64, uint16_t(iv->powerLimit),iv->devControlCmd);
 
                             // ToDo: Only set Request to false if succesful executed
                             iv->devControlRequest = false;
@@ -261,6 +266,7 @@ namespace hoymiles {
                 else {
                     ESP_LOGE(TAG, "time not set, can't request inverter!");
                 }
+                yield();
             }
 
             // if(++mUpdateTicker >= mUpdateInterval) {
@@ -345,7 +351,7 @@ namespace hoymiles {
 
 
     void processPayload(bool retransmit) {
-        ESP_LOGV(TAG, "app::processPayload");
+        // ESP_LOGD(TAG, "app::processPayload %i",mSys->getNumInverters() );
         for(uint8_t id = 0; id < mSys->getNumInverters(); id++) {
             Inverter<> *iv = mSys->getInverterByPos(id);
             if(NULL != iv) {

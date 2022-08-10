@@ -2,7 +2,7 @@ esphome:
   name: hoymiles
   libraries:                #built-in libraries
     - "SPI"
-    - "nrf24/RF24@^1.4.2"
+    - "nrf24/RF24@^1.4.5"
 
 esp32:
   board: az-delivery-devkit-v4

@@ -19,7 +19,7 @@ namespace hoymiles {
 
         char topic[30], val[10];
 
-        if (iv->isAvailable(this->parent_->getTimestamp())) {
+        if (NULL != iv && iv->isAvailable(this->parent_->getTimestamp())) {
             for(uint8_t i = 0; i < iv->listLen; i++) {
 
                 if (0.0f != iv->getValue(i)) {     
