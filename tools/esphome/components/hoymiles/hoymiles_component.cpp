@@ -174,7 +174,7 @@ namespace hoymiles {
                                     mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
                                 }
 
-                                if((*pid & 0x80) == 0x80) {
+                                if((*pid & 0x80) == 0x80) { // Last packet
                                     if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
                                         mPayload[iv->id].maxPackId = (*pid & 0x7f);
 
@@ -216,9 +216,11 @@ namespace hoymiles {
                         mSendLastIvId = ((MAX_NUM_INVERTERS-1) == mSendLastIvId) ? 0 : mSendLastIvId + 1;
                         iv = mSys->getInverterByPos(mSendLastIvId);
 
+
                     } while((NULL == iv) && ((maxLoop--) > 0));
 
                     if(NULL != iv) {
+
                         if(!mPayload[iv->id].complete)
                             processPayload(false);
 
@@ -248,17 +250,16 @@ namespace hoymiles {
                             ESP_LOGV(TAG, "Requesting Inverter SN %s", buffer);
                         // }
 
-                        if(iv->devControlRequest) {
+                        if(iv->devControlRequest && iv->powerLimit[0] > 0) { // prevent to "switch off") {
                             // if(mSerialDebug)
                                 ESP_LOGV(TAG, "Devcontrol request %s power limit %s", String(iv->devControlCmd), String(iv->powerLimit));
                                 // DPRINTLN(DBG_INFO, F("Devcontrol request ") + String(iv->devControlCmd) + F(" power limit ") + String(iv->powerLimit));
 
-                            // mSys->Radio.sendControlPacket(iv->radioId.u64, uint16_t(iv->powerLimit),iv->devControlCmd);
-
                             // ToDo: Only set Request to false if succesful executed
-                            iv->devControlRequest = false;
+                            mSys->Radio.sendControlPacket(iv->radioId.u64,iv->devControlCmd ,iv->powerLimit);
                         } else {
-                            mSys->Radio.sendTimePacket(iv->radioId.u64, mPayload[iv->id].ts);
+                            mSys->Radio.sendTimePacket(iv->radioId.u64, mSys->InfoCmd, mPayload[iv->id].ts,iv->alarmMesIndex);
+
                             mRxTicker = 0;
                         }
                     }
@@ -280,29 +281,29 @@ namespace hoymiles {
         ESP_LOGI(TAG, "Sending OnOff: %d", state);
 
         if (state) {
-            mSys->Radio.sendControlPacket(invId, NULL, control_commands::TURN_ON);
+            mSys->Radio.sendControlPacket(invId, control_commands::TURN_ON, NULL);
         } else {
-            mSys->Radio.sendControlPacket(invId, NULL, control_commands::TURN_OFF);
+            mSys->Radio.sendControlPacket(invId, control_commands::TURN_OFF, NULL);
         }
     }
 
     void HoymilesComponent::sendRestartPacket(uint64_t invId) {
         ESP_LOGI(TAG, "Sending Restart");
 
-        mSys->Radio.sendControlPacket(invId, NULL, control_commands::RESTART);
+        mSys->Radio.sendControlPacket(invId, control_commands::RESTART, NULL);
     }
 
     void HoymilesComponent::sendCleanStatePacket(uint64_t invId) {
         ESP_LOGI(TAG, "Sending Command to clean alarm and state");
 
-        mSys->Radio.sendControlPacket(invId, NULL, control_commands::CLEAN_STATE_ALARM);
+        mSys->Radio.sendControlPacket(invId, control_commands::CLEAN_STATE_ALARM, NULL);
     }
 
 
-    void HoymilesComponent::sendLimitPacket(uint64_t invId, uint32_t limit) {
+    void HoymilesComponent::sendLimitPacket(uint64_t invId, uint16_t *limit) {
         ESP_LOGI(TAG, "Sending Limitation: %i", limit);
 
-        mSys->Radio.sendControlPacket(invId, limit, control_commands::POWER_LIMIT);
+        mSys->Radio.sendControlPacket(invId, control_commands::POWER_LIMIT, limit);
 
         // mSys->Radio.sendPowerLimitPacket(invId, limit, true);
     }
@@ -365,7 +366,7 @@ namespace hoymiles {
                                         for(uint8_t i = 0; i < (mPayload[iv->id].maxPackId-1); i ++) {
                                             if(mPayload[iv->id].len[i] == 0) {
                                                 ESP_LOGE(TAG, "while retrieving data: Frame %s missing: Request Retransmit", String(i+1));
-                                                mSys->Radio.sendCmdPacket(iv->radioId.u64, 0x15, (0x81+i), true);
+                                                mSys->Radio.sendCmdPacket(iv->radioId.u64, TX_REQ_INFO, (SINGLE_FRAME+i), true);
                                                 break; // only retransmit one frame per loop
                                             }
                                             yield();
@@ -374,9 +375,10 @@ namespace hoymiles {
                                     else {
                                         ESP_LOGE(TAG, "while retrieving data: last frame missing: Request Retransmit");
                                         if(0x00 != mLastPacketId)
-                                            mSys->Radio.sendCmdPacket(iv->radioId.u64, 0x15, mLastPacketId, true);
+                                            mSys->Radio.sendCmdPacket(iv->radioId.u64, TX_REQ_INFO, mLastPacketId, true);
                                         else
-                                            mSys->Radio.sendTimePacket(iv->radioId.u64, mPayload[iv->id].ts);
+                                            mSys->Radio.sendTimePacket(iv->radioId.u64, mSys->InfoCmd, mPayload[iv->id].ts,iv->alarmMesIndex);
+
                                     }
                                     mSys->Radio.switchRxCh(100);
                                 }
@@ -386,7 +388,7 @@ namespace hoymiles {
                     else {
                         mPayload[iv->id].complete = true;
                         
-                        ESP_LOGV(TAG, "Last recieved TimeStamp: %i", mPayload[iv->id].ts);
+                        ESP_LOGD(TAG, "Last recieved TimeStamp: %i", mPayload[iv->id].ts);
 
                         iv->ts = mPayload[iv->id].ts;
                         uint8_t payload[128] = {0};

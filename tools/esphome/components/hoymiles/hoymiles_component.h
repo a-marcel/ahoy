@@ -40,7 +40,7 @@ class HoymilesComponent : public Component {
         float get_setup_priority() const override { return setup_priority::AFTER_CONNECTION; }
         // void set_component_source(const char * 	source) {}
         void loop() override;
-        void sendLimitPacket(uint64_t invId, uint32_t limit);
+        void sendLimitPacket(uint64_t invId, uint16_t *limit);
         void sendTurnOnOffPacket(uint64_t invId, bool state);
         void sendRestartPacket(uint64_t invId);
         void sendCleanStatePacket(uint64_t invId);

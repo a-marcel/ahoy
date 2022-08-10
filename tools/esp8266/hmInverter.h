@@ -83,6 +83,7 @@ class Inverter {
 
         Inverter() {
             ts = 0;
+            id = NULL;
             powerLimit[0] = -1; // 65535 W Limit -> unlimited
             powerLimit[1] = 0x0100; // 0x0000 --> set temporary , 0x0100 --> set persistent
             devControlRequest = false;

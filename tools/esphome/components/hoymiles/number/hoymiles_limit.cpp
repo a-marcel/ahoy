@@ -17,7 +17,11 @@ static const char *const TAG = "hoymiles.limit";
 
         Inverter<> *iv = this->parent_->get_inverter(this->inverter_id_);
 
-        this->parent_->sendLimitPacket(iv->radioId.u64, value);
+        uint16_t *limit;
+        limit = (uint16_t*)(&value);
+
+
+        this->parent_->sendLimitPacket(iv->radioId.u64, limit);
 
         this->publish_state(value);
     }

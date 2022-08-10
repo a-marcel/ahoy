@@ -24,9 +24,9 @@ namespace hoymiles {
 
                 if (0.0f != iv->getValue(i)) {     
 
-                    snprintf(topic, 30, "%s/ch%d/%s", iv->name, iv->assign[i].ch, iv->getFieldName(i));
-                                        snprintf(val, 10, "%.3f %s", iv->getValue(i), iv->getUnit(i));
-                    ESP_LOGI(TAG, "%s: %s", String(topic), String(val));
+                    // snprintf(topic, 30, "%s/ch%d/%s", iv->name, iv->assign[i].ch, iv->getFieldName(i));
+                    //                     snprintf(val, 10, "%.3f %s", iv->getValue(i), iv->getUnit(i));
+                    // ESP_LOGI(TAG, "%s: %s", String(topic), String(val));
 
 
                     if (iv->assign[i].ch == 0) {
@@ -54,7 +54,7 @@ namespace hoymiles {
                         else if (String(fields[iv->assign[i].fieldId]).compareTo(String("YieldTotal")) == 0 && this->general_.yield_total_sensor_ != nullptr) {
                             this->general_.yield_total_sensor_->publish_state(iv->getValue(i));
                         }
-                        else if (String(fields[iv->assign[i].fieldId]).compareTo(String("Effiency")) == 0 && this->general_.efficiency_sensor_ != nullptr) {
+                        else if (String(fields[iv->assign[i].fieldId]).compareTo(String("Efficiency")) == 0 && this->general_.efficiency_sensor_ != nullptr) {
                             this->general_.efficiency_sensor_->publish_state(iv->getValue(i));
                         }
 
