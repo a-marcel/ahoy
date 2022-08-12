@@ -64,12 +64,17 @@ class HoymilesComponent : public Component {
 
         Inverter<> * get_inverter(char *identification);
 
-        time_t getTimestamp() {
+        time_t getRtcTimestamp() {
             return this->time_clock->now().timestamp;
         }
 
+        time_t getTimestamp() { return this->timestamp_; }
+        void setTimestamp(time_t timestamp ) { this->timestamp_ = timestamp; }
+
 
     protected:
+
+        time_t timestamp_ = 0;
 
         InternalGPIOPin *ce_pin_;
         InternalGPIOPin *cs_pin_;

@@ -20,12 +20,13 @@ namespace hoymiles {
         char topic[30], val[10];
 
         if (NULL != iv && iv->isAvailable(this->parent_->getTimestamp())) {
+        // if (NULL != iv && iv->isAvailable(this->parent_->getTimestamp())) {
             for(uint8_t i = 0; i < iv->listLen; i++) {
 
                 if (0.0f != iv->getValue(i)) {     
 
-                    // snprintf(topic, 30, "%s/ch%d/%s", iv->name, iv->assign[i].ch, iv->getFieldName(i));
-                    //                     snprintf(val, 10, "%.3f %s", iv->getValue(i), iv->getUnit(i));
+                    // snprintf(topic, 30, "%s/ch%d/%s", iv->name, iv->assign[i].ch, String(iv->getFieldName(i)));
+                    // snprintf(val, 10, "%.3f %s", iv->getValue(i), String(iv->getUnit(i)));
                     // ESP_LOGI(TAG, "%s: %s", String(topic), String(val));
 
 

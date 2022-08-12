@@ -52,7 +52,7 @@ hoymiles:
     cs_pin: 5
     ce_pin: 4
     irq_pin: 17
-    send_interval: 20
+    send_interval: 5
     amplifier_power: 1    
 
 sensor:
@@ -77,6 +77,9 @@ sensor:
 
       power:
         name: "HM400 - DC Power Total"
+
+      last_updated:
+        name: "HM400 - Last Updated"
     
 
     grid:

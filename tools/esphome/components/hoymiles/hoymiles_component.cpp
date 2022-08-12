@@ -16,7 +16,7 @@ namespace hoymiles {
     }; 
 
     uint32_t mRxTicker;
-    time_t mTimestamp;
+    // time_t mTimestamp;
     uint32_t mTicker;
     uint16_t mSendTicker;
     uint16_t mSendInterval;
@@ -83,12 +83,12 @@ namespace hoymiles {
         mRxSuccess    = 0;
 
         mRxTicker = 0;
-        mTimestamp = time_clock->now().timestamp;
+        // mTimestamp = 0;
 
         mNtpUpdateCounter = 0;
-        mNtpUpdateInterval = 300; // seconds
+        mNtpUpdateInterval = 120; // seconds
 
-        ESP_LOGI(TAG, "Setting inital timestamp %i", mTimestamp);
+        ESP_LOGI(TAG, "Setting inital timestamp %lu", this->getTimestamp());
 
         mSendTicker     = 0xffff;
         mSendInterval   = this->send_interval_;
@@ -117,25 +117,22 @@ namespace hoymiles {
             // mTimestamp++;
             mUptimeSecs++;
 
+            time_t mTimestamp =this->getTimestamp();
+
+
+            // mTimestamp++;
+
             mNtpUpdateCounter++;
 
             if (mNtpUpdateCounter > mNtpUpdateInterval || mTimestamp == 0 || mTimestamp < 100000) {
-                ESP_LOGD(TAG, "Sync timestamp with NTP");
-                mTimestamp  = time_clock->now().timestamp;
+                mTimestamp  = this->getRtcTimestamp();
+                ESP_LOGI(TAG, "Sync timestamp with NTP: %lu", mTimestamp);
+
                 mNtpUpdateCounter = 0;
             } else {
                 mTimestamp++;
             }
-
-            // if(0 != mTimestamp)
-            //     mTimestamp++;
-            // else {
-            //     // if(!mApActive) {
-            //         mTimestamp  = time_clock->now().timestamp;
-
-            //         // DPRINTLN("[NTP]: " + getDateTimeStr(mTimestamp));
-            //     // }
-            // }        
+            this->setTimestamp(mTimestamp);
         }
 
         mSys->Radio.loop();
@@ -164,29 +161,89 @@ namespace hoymiles {
                         // mSys->Radio.dumpBuf("Payload ", p->packet, len);
 
                         Inverter<> *iv = mSys->findInverter(&p->packet[1]);
-                        if(NULL != iv&& p->packet[0] == (0x15 + 0x80)) { // response from get all information command
-                            uint8_t *pid = &p->packet[9];
-                            if (*pid == 0x00) {
-                                ESP_LOGD(TAG, "fragment number zero received and ignored");
-                            } else {
-                                if((*pid & 0x7F) < 5) {
-                                    memcpy(mPayload[iv->id].data[(*pid & 0x7F) - 1], &p->packet[10], len-11);
-                                    mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
+                        if(NULL != iv&& p->packet[0] == (TX_REQ_INFO + 0x80)) { // response from get all information command
+                            
+                            switch (mSys->InfoCmd){
+                                case InverterDevInform_Simple:
+                                {
+                                    DPRINT(DBG_INFO, "Response from inform simple\n");
+                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
+                                    break;
                                 }
+                                case InverterDevInform_All:
+                                {
+                                    DPRINT(DBG_INFO, "Response from inform all\n");
+                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
+                                    break;
+                                }
+                                case GetLossRate:
+                                {
+                                    DPRINT(DBG_INFO, "Response from get loss rate\n");
+                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
+                                    break;
+                                }
+                                case AlarmData:
+                                {
+                                    DPRINT(DBG_INFO, "Response from AlarmData\n");
+                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
+                                    break;
+                                }
+                                case AlarmUpdate:
+                                {
+                                    DPRINT(DBG_INFO, "Response from AlarmUpdate\n");
+                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
+                                    break;
+                                }
+                                case RealTimeRunData_Debug:
+                                {
+                                    uint8_t *pid = &p->packet[9];
+                                    if (*pid == 0x00) {
+                                        ESP_LOGD(TAG, "fragment number zero received and ignored");
+                                    } else {
+                                        if((*pid & 0x7F) < 5) {
+                                            memcpy(mPayload[iv->id].data[(*pid & 0x7F) - 1], &p->packet[10], len-11);
+                                            mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
+                                        }
 
-                                if((*pid & 0x80) == 0x80) { // Last packet
-                                    if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
-                                        mPayload[iv->id].maxPackId = (*pid & 0x7f);
+                                        if((*pid & 0x80) == 0x80) { // Last packet
+                                            if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
+                                                mPayload[iv->id].maxPackId = (*pid & 0x7f);
 
-                                        if(*pid > 0x81)
-                                            mLastPacketId = *pid;
+                                                if(*pid > 0x81)
+                                                    mLastPacketId = *pid;
+                                        }
+                                    }
+                                    break;
                                 }
                             }
                         }
-                        if(NULL != iv && p->packet[0] == (0x51 + 0x80)) { // response from dev control command q'n'd
-                            // snprintf(respTopic, 64, "%s/devcontrol/%d/resp", mMqtt.getTopic(), iv->id);
-                            // mMqtt.sendMsg2(respTopic,(const char*)p->packet,false);
-                        }                        
+                        if(NULL != iv && p->packet[0] == (TX_REQ_DEVCONTROL + 0x80)) { // response from dev control command
+                            ESP_LOGD(TAG, "Response from devcontrol request received");
+                            iv->devControlRequest = false; 
+                            switch (p->packet[12]){
+                                case ActivePowerContr:
+                                    if (iv->devControlCmd >= ActivePowerContr && iv->devControlCmd <= PFSet){ // ok inverter accepted the set point copy it to dtu eeprom
+                                        if (iv->powerLimit[1]>0){ // User want to have it persistent
+                                            // mEep->write(ADDR_INV_PWR_LIM + iv->id * 2,iv->powerLimit[0]);
+                                            // updateCrc();
+                                            // mEep->commit();
+                                            ESP_LOGI(TAG, "Inverter has accepted power limit set point, written to dtu eeprom");
+                                        } else {
+                                            ESP_LOGI(TAG, "Inverter has accepted power limit set point");
+                                        }
+                                        iv->devControlCmd = Init;
+                                    }
+                                    break;
+                                default:
+                                    if (iv->devControlCmd == ActivePowerContr){
+                                        //case inverter did not accept the sent limit; set back to last stored limit
+                                        // mEep->read(ADDR_INV_PWR_LIM + iv->id * 2, (uint16_t *)&(iv->powerLimit[0]));
+                                        // DPRINTLN(DBG_INFO, F("Inverter has not accepted power limit set point"));    
+                                    }
+                                    iv->devControlCmd = Init;
+                                    break;
+                            }
+                        }                     
                     }
                 }
                 mSys->BufCtrl.popBack();
@@ -202,7 +259,7 @@ namespace hoymiles {
             if(++mSendTicker >= mSendInterval) {
                 mSendTicker = 0;
 
-                if(0 != mTimestamp) {
+                if(0 != this->getTimestamp()) {
                     if(!mSys->BufCtrl.empty()) {
                         // if(mSerialDebug)
                             ESP_LOGV(TAG, "recbuf not empty! # %i", mSys->BufCtrl.getFill());
@@ -238,9 +295,9 @@ namespace hoymiles {
                         mPayload[iv->id].maxPackId = 0;
                         mPayload[iv->id].complete  = false;
                         mPayload[iv->id].requested = true;
-                        mPayload[iv->id].ts = mTimestamp;
+                        mPayload[iv->id].ts = this->getTimestamp();
 
-                        ESP_LOGV(TAG, "Setting timestamp: %i", mTimestamp);
+                        ESP_LOGV(TAG, "Setting timestamp: %i", this->getTimestamp());
 
                         yield();
 

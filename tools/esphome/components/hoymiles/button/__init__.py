@@ -29,7 +29,6 @@ CONF_INVERTER_ID = "inverter_id"
 CONF_SUPPORTED_TYPES = {
     "RESTART": HoymilesButtonTypes.RESTART,
     "CLEAN_STATE": HoymilesButtonTypes.CLEAN_STATE
-
 }
 
 CONFIG_SCHEMA = (

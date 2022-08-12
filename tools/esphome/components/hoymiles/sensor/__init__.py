@@ -88,7 +88,7 @@ HOYMILES_DC_CHANNEL_SCHEMA = cv.Schema(
             unit_of_measurement=UNIT_PERCENT,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
-        ),        
+        ),
     }
 )
 
@@ -132,16 +132,16 @@ CONF_EFFICIENCY = "efficiency"
 HOYMILES_GENERAL_SCHEMA = cv.Schema(
     {
         cv.Optional(CONF_VALUE_YIELD_DAY): sensor.sensor_schema(
-                unit_of_measurement=UNIT_WATT_HOURS,
-                accuracy_decimals=2,
-                device_class=DEVICE_CLASS_ENERGY,
-                state_class=STATE_CLASS_MEASUREMENT,
+            unit_of_measurement=UNIT_WATT_HOURS,
+            accuracy_decimals=2,
+            device_class=DEVICE_CLASS_ENERGY,
+            state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_VALUE_YIELD_TOTAL): sensor.sensor_schema(
-                unit_of_measurement=UNIT_KILOWATT_HOURS,
-                accuracy_decimals=2,
-                device_class=DEVICE_CLASS_ENERGY,
-                state_class=STATE_CLASS_TOTAL_INCREASING,
+            unit_of_measurement=UNIT_KILOWATT_HOURS,
+            accuracy_decimals=2,
+            device_class=DEVICE_CLASS_ENERGY,
+            state_class=STATE_CLASS_TOTAL_INCREASING,
         ),
         cv.Optional(CONF_TEMPERATURE): sensor.sensor_schema(
             unit_of_measurement=UNIT_CELSIUS,

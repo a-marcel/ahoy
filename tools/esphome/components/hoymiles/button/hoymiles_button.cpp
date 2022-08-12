@@ -13,7 +13,7 @@ namespace hoymiles {
     void HoymilesButton::press_action() {
         ESP_LOGI(TAG, "Restart ...");
 
-        Inverter<> *iv = this->parent_->get_inverter(this->inviter_id_);
+        Inverter<> *iv = this->parent_->get_inverter(this->inverter_id_);
 
         if (this->_type == HoymilesButtonTypes::RESTART) {
             this->parent_->sendRestartPacket(iv->radioId.u64);
