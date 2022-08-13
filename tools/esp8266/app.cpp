@@ -86,7 +86,7 @@ void app::setup(uint32_t timeout) {
                 if(NULL != iv) {
                     mEep->read(ADDR_INV_PWR_LIM + (i * 2),(uint16_t *)&(iv->powerLimit[0]));
                     if (iv->powerLimit[0] != 0xffff) { // only set it, if it is changed by user. Default value in the html setup page is -1 = 0xffff
-                        iv->powerLimit[1] = 0x0100; // set the limit as persistent
+                        iv->powerLimit[1] = 0x0001; // set the limit as persistent
                         iv->devControlCmd = ActivePowerContr; // set active power limit
                         iv->devControlRequest = true; // set to true to update the active power limit from setup html page 
                         DPRINTLN(DBG_INFO, F("add inverter: ") + String(name) + ", SN: " + String(invSerial, HEX) + ", Power Limit: " + String(iv->powerLimit[0]));
@@ -163,9 +163,13 @@ void app::setup(uint32_t timeout) {
             mqttPort = 1883;
 
         mMqtt.setup(mqttAddr, mqttTopic, mqttUser, mqttPwd, mqttDevName, mqttPort);
-        mMqtt.mClient->setCallback(std::bind(&app::cbMqtt, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        mMqtt.setCallback(std::bind(&app::cbMqtt, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         mMqttTicker = 0;
 
+#ifdef __MQTT_TEST__
+        // für mqtt test
+        mMqttTicker = mMqttInterval -10;
+#endif
         mSerialTicker = 0;
 
         if(mqttAddr[0] > 0) {
@@ -363,8 +367,17 @@ void app::loop(void) {
                 }
             }
             snprintf(val, 10, "%ld", millis()/1000);
+            
+#ifndef __MQTT_NO_DISCOVERCONFIG__
+            // MQTTDiscoveryConfig nur wenn nicht abgeschaltet.
             sendMqttDiscoveryConfig();
+#endif            
             mMqtt.sendMsg("uptime", val);
+
+#ifdef __MQTT_TEST__
+            // für einfacheren Test mit MQTT, den MQTT abschnitt in 10 Sekunden wieder ausführen
+            mMqttTicker = mMqttInterval -10;
+#endif
         }
 
         if(mSerialValues) {
@@ -488,6 +501,11 @@ bool app::buildPayload(uint8_t id) {
 
 //-----------------------------------------------------------------------------
 void app::processPayload(bool retransmit) {
+
+#ifdef __MQTT_AFTER_RX__
+    boolean doMQTT = false;
+#endif
+
     DPRINTLN(DBG_VERBOSE, F("app::processPayload"));
     for(uint8_t id = 0; id < mSys->getNumInverters(); id++) {
         Inverter<> *iv = mSys->getInverterByPos(id);
@@ -544,11 +562,27 @@ void app::processPayload(bool retransmit) {
                         yield();
                     }
                     iv->doCalculations();
+
+#ifdef __MQTT_AFTER_RX__
+                    doMQTT = true;
+#endif
+
                 }
             }
             yield();
         }
     }
+
+#ifdef __MQTT_AFTER_RX__
+    //  ist MQTT aktiviert und es wurden Daten vom einem oder mehreren WR aufbereitet ( doMQTT = true) 
+    //  dann die den mMqttTicker auf mMqttIntervall -2 setzen, also  
+    //  MQTT aussenden in 2 sek aktivieren 
+    //  dies sollte noch über einen Schalter im Setup aktivier / deaktivierbar gemacht werden
+    if( (mMqttInterval != 0xffff) && doMQTT ) {
+        ++mMqttTicker = mMqttInterval -2;
+        DPRINT(DBG_DEBUG, F("MQTTticker auf Intervall -2 sec ")) ;
+    }
+#endif
 }
 
 
