@@ -80,14 +80,15 @@ class Inverter {
         RECORDTYPE    *record;  // pointer for values
         uint16_t      chMaxPwr[4]; // maximum power of the modules (Wp)
         char          chName[4][MAX_NAME_LENGTH]; // human readable name for channel
+        bool          initialized; // needed to check if the inverter was correctly added (ESP32 specific - union types are never null)
 
         Inverter() {
             ts = 0;
-            id = NULL;
             powerLimit[0] = -1; // 65535 W Limit -> unlimited
             powerLimit[1] = 0x0001; // 0x0000 --> set temporary , 0x0001 --> set persistent
             devControlRequest = false;
             devControlCmd = 0xff;
+            initialized = false;
         }
 
         ~Inverter() {
@@ -102,6 +103,7 @@ class Inverter {
             memset(name, 0, MAX_NAME_LENGTH);
             memset(chName, 0, MAX_NAME_LENGTH * 4);
             memset(record, 0, sizeof(RECORDTYPE) * listLen);
+            initialized = true;
         }
 
         uint8_t getPosByChFld(uint8_t channel, uint8_t fieldId) {
@@ -167,6 +169,10 @@ class Inverter {
         bool isAvailable(uint32_t timestamp) {
             DPRINTLN(DBG_VERBOSE, F("hmInverter.h:isAvailable"));
             return ((timestamp - ts) < INACT_THRES_SEC);
+        }
+
+        bool isInitialized() {
+            return (initialized) ? true : false;
         }
 
         bool isProducing(uint32_t timestamp) {

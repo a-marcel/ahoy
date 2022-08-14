@@ -73,8 +73,8 @@ class HoymilesComponent : public Component {
 
 
     protected:
-
         time_t timestamp_ = 0;
+        uint8_t mMaxRetransPerPyld = 5;
 
         InternalGPIOPin *ce_pin_;
         InternalGPIOPin *cs_pin_;
@@ -88,6 +88,10 @@ class HoymilesComponent : public Component {
         esphome::time::RealTimeClock *time_clock{nullptr};
         uint16_t send_interval_;
         uint8_t amplifier_power_;
+
+
+    private:
+        void processPayload(bool retransmit);
 
 };
 }  // namespace uart

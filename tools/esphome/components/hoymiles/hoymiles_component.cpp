@@ -28,7 +28,6 @@ namespace hoymiles {
     bool mMqttNewDataAvail;
     uint32_t mRxFailed;
     uint32_t mRxSuccess;
-    uint8_t mMaxRetransPerPyld;
     uint32_t mFrameCnt;
 
     uint32_t mUpdateTicker;
@@ -63,7 +62,7 @@ namespace hoymiles {
         mSys->Radio.pinCe  = this->ce_pin_->get_pin();
         mSys->Radio.pinIrq = this->irq_pin_->get_pin();
 
-        // mSys->Radio.mSerialDebug = true;
+        mSys->Radio.mSerialDebug = true;
 
         
         for(int i = 0; i < MAX_NUM_INVERTERS; i++) {
@@ -273,11 +272,9 @@ namespace hoymiles {
                         mSendLastIvId = ((MAX_NUM_INVERTERS-1) == mSendLastIvId) ? 0 : mSendLastIvId + 1;
                         iv = mSys->getInverterByPos(mSendLastIvId);
 
-
                     } while((NULL == iv) && ((maxLoop--) > 0));
 
                     if(NULL != iv) {
-
                         if(!mPayload[iv->id].complete)
                             processPayload(false);
 
@@ -408,7 +405,7 @@ namespace hoymiles {
     }
 
 
-    void processPayload(bool retransmit) {
+    void HoymilesComponent::processPayload(bool retransmit) {
         // ESP_LOGD(TAG, "app::processPayload %i",mSys->getNumInverters() );
         for(uint8_t id = 0; id < mSys->getNumInverters(); id++) {
             Inverter<> *iv = mSys->getInverterByPos(id);
