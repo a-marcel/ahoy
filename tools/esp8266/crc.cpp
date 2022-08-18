@@ -35,4 +35,5 @@ uint16_t crc16(uint8_t buf[], uint8_t len, uint16_t start) {
     }
     return crc;
 }
-}
+
+} // namespace Hoymiles

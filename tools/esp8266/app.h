@@ -69,6 +69,7 @@ class app {
         void handleIntr(void);
         void cbMqtt(char* topic, byte* payload, unsigned int length);
         void saveValues(void);
+        void resetPayload(Inverter<>* iv);
         String getStatistics(void);
         String getLiveData(void);
         String getJson(void);
@@ -147,9 +148,10 @@ class app {
         void loadDefaultConfig(void);
         void loadEEpconfig(void);
         void setupMqtt(void);
-
+        
         bool buildPayload(uint8_t id);
         void processPayload(bool retransmit);
+        void processPayload(bool retransmit, uint8_t cmd);
 
         void sendMqttDiscoveryConfig(void);
         const char* getFieldDeviceClass(uint8_t fieldId);
@@ -164,7 +166,7 @@ class app {
             while(length > 0) {
                 len = (length < 32) ? length : 32;
                 mEep->read(start, buf, len);
-                crc = crc16(buf, len, crc);
+                crc = Hoymiles::crc16(buf, len, crc);
                 start += len;
                 length -= len;
             }
