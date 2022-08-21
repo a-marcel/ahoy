@@ -78,10 +78,6 @@ sensor:
       power:
         name: "HM400 - DC Power Total"
 
-      last_updated:
-        name: "HM400 - Last Updated"
-    
-
     grid:
       current:
         name: "HM400 - AC Current"
@@ -137,3 +133,10 @@ number:
     inverter_id: hm400
     name: "HM400 - Limit"
     max_power: 400
+
+text_sensor:
+  - platform: hoymiles
+    inverter_id: hm400
+    name: "HM400 - Last Updated"
+    type: LAST_UPDATED
+    update_interval: 30s    

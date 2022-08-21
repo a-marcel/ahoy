@@ -3,12 +3,15 @@ import esphome.config_validation as cv
 from esphome.const import (
     CONF_ID,
     ICON_CURRENT_AC,
-
+    ICON_LIGHTBULB,
+    
     CONF_VOLTAGE,
     CONF_CURRENT,
     CONF_POWER,
     CONF_FREQUENCY,
     CONF_TEMPERATURE,
+    CONF_REACTIVE_POWER,
+    CONF_POWER_FACTOR,
 
     UNIT_VOLT,
     UNIT_AMPERE,
@@ -18,13 +21,15 @@ from esphome.const import (
     UNIT_KILOWATT_HOURS,
     UNIT_CELSIUS,
     UNIT_PERCENT,
+    UNIT_VOLT_AMPS_REACTIVE,
     
     DEVICE_CLASS_VOLTAGE,
     DEVICE_CLASS_CURRENT,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_TEMPERATURE,
-
+    DEVICE_CLASS_POWER_FACTOR,
+    
     STATE_CLASS_MEASUREMENT,
     STATE_CLASS_TOTAL_INCREASING,
 )
@@ -119,7 +124,18 @@ HOYMILES_GRID_SCHEMA = cv.Schema(
             icon=ICON_CURRENT_AC,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
-        ),            
+        ),
+        cv.Optional(CONF_REACTIVE_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_VOLT_AMPS_REACTIVE,
+            icon=ICON_LIGHTBULB,
+            accuracy_decimals=2,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_POWER_FACTOR): sensor.sensor_schema(
+            accuracy_decimals=2,
+            device_class=DEVICE_CLASS_POWER_FACTOR,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
     }
 )
 
@@ -164,6 +180,21 @@ HOYMILES_GENERAL_SCHEMA = cv.Schema(
     }
 )
 
+CONF_DEBUG = "debug"
+CONF_VALUE_RX_FAILED = "rx_failed"
+CONF_VALUE_RX_SUCCESS = "rx_success"
+CONF_VALUE_RX_FRAMES_COUNT = "rx_frames_count"
+CONF_VALUE_SEND_COUNT = "send_count"
+
+HOYMILES_DEBUG_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_VALUE_RX_FAILED): sensor.sensor_schema(),
+        cv.Optional(CONF_VALUE_RX_SUCCESS): sensor.sensor_schema(),
+        cv.Optional(CONF_VALUE_RX_FRAMES_COUNT): sensor.sensor_schema(),
+        cv.Optional(CONF_VALUE_SEND_COUNT): sensor.sensor_schema(),
+    }
+)
+
 
 CONF_INVERTER_ID = "inverter_id"
 
@@ -179,7 +210,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CHANNEL_6): HOYMILES_DC_CHANNEL_SCHEMA,    
 
     cv.Optional(CONF_GRID): HOYMILES_GRID_SCHEMA,    
-    cv.Optional(CONF_GENERAL): HOYMILES_GENERAL_SCHEMA,    
+    cv.Optional(CONF_GENERAL): HOYMILES_GENERAL_SCHEMA,
+
+    cv.Optional(CONF_DEBUG): HOYMILES_DEBUG_SCHEMA,
 
 }).extend(cv.polling_component_schema('never')).extend(hoymiles.HOYMILES_DEVICE_SCHEMA)
 
@@ -251,3 +284,23 @@ def to_code(config):
         if CONF_EFFICIENCY in general_conf:
             sens = yield sensor.new_sensor(general_conf[CONF_EFFICIENCY])
             cg.add(var.set_general_efficiency_sensor(sens))
+
+    if (CONF_DEBUG in config):
+        debug_conf = config[CONF_DEBUG]
+
+        if CONF_VALUE_RX_FAILED in debug_conf:
+            sens = yield sensor.new_sensor(debug_conf[CONF_VALUE_RX_FAILED])
+            cg.add(var.set_debug_rx_failed_sensor(sens))        
+
+        if CONF_VALUE_RX_SUCCESS in debug_conf:
+            sens = yield sensor.new_sensor(debug_conf[CONF_VALUE_RX_SUCCESS])
+            cg.add(var.set_debug_rx_success_sensor(sens))
+
+        if CONF_VALUE_RX_FRAMES_COUNT in debug_conf:
+            sens = yield sensor.new_sensor(debug_conf[CONF_VALUE_RX_FRAMES_COUNT])
+            cg.add(var.set_debug_rx_frames_count_sensor(sens))        
+
+        if CONF_VALUE_SEND_COUNT in debug_conf:
+            sens = yield sensor.new_sensor(debug_conf[CONF_VALUE_SEND_COUNT])
+            cg.add(var.set_debug_send_count_sensor(sens))        
+

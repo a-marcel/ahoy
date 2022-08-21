@@ -37,7 +37,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(HoymilesButton),
             cv.Required(CONF_INVERTER_ID): cv.validate_id_name,
-           cv.Required(CONF_TYPE): cv.enum(CONF_SUPPORTED_TYPES, upper=True)
+            cv.Required(CONF_TYPE): cv.enum(CONF_SUPPORTED_TYPES, upper=True)
         }
     )
     .extend(cv.COMPONENT_SCHEMA).extend(hoymiles.HOYMILES_DEVICE_SCHEMA)

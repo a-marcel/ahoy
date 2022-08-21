@@ -31,12 +31,20 @@ namespace hoymiles {
             void set_grid_current_sensor(sensor::Sensor *obj) { this->grid_.current_sensor_ = obj; }
             void set_grid_power_sensor(sensor::Sensor *obj) { this->grid_.power_sensor_ = obj; }
             void set_grid_frequency_sensor(sensor::Sensor *obj) { this->grid_.frequency_sensor_ = obj; }
+            void set_grid_reactive_power_sensor(sensor::Sensor *obj) { this->grid_.reactive_power_sensor_ = obj; }
+            void set_grid_power_factor_sensor(sensor::Sensor *obj) { this->grid_.power_factor_sensor_ = obj; }
 
             void set_general_yield_day_sensor(sensor::Sensor *obj) { this->general_.yield_day_sensor_ = obj; }
             void set_general_yield_total_sensor(sensor::Sensor *obj) { this->general_.yield_total_sensor_ = obj; }
             void set_general_temperatur_sensor(sensor::Sensor *obj) { this->general_.temperature_sensor_ = obj; }
             void set_general_power_sensor(sensor::Sensor *obj) { this->general_.power_sensor_ = obj; }
             void set_general_efficiency_sensor(sensor::Sensor *obj) { this->general_.efficiency_sensor_ = obj; }
+
+            void set_debug_rx_failed_sensor(sensor::Sensor *obj) { this->debug_.debug_rx_failed_sensor_ = obj; }
+            void set_debug_rx_success_sensor(sensor::Sensor *obj) { this->debug_.debug_rx_success_sensor_ = obj; }
+            void set_debug_rx_frames_count_sensor(sensor::Sensor *obj) { this->debug_.debug_rx_frames_count_sensor_ = obj; }
+            void set_debug_send_count_sensor(sensor::Sensor *obj) { this->debug_.debug_send_count_sensor_ = obj; }
+
 
         protected:
             char *inverter_id_;
@@ -55,6 +63,8 @@ namespace hoymiles {
                 sensor::Sensor *current_sensor_{nullptr};
                 sensor::Sensor *power_sensor_{nullptr};
                 sensor::Sensor *frequency_sensor_{nullptr};
+                sensor::Sensor *reactive_power_sensor_{nullptr};
+                sensor::Sensor *power_factor_sensor_{nullptr};
             } grid_;    
 
             struct HoymilesGeneral {
@@ -63,7 +73,15 @@ namespace hoymiles {
                 sensor::Sensor *temperature_sensor_{nullptr};
                 sensor::Sensor *power_sensor_{nullptr};
                 sensor::Sensor *efficiency_sensor_{nullptr};
-            } general_;        
+            } general_;
+
+            struct HoymilesDebug {
+                sensor::Sensor *debug_rx_failed_sensor_{nullptr};
+                sensor::Sensor *debug_rx_success_sensor_{nullptr};
+                sensor::Sensor *debug_rx_frames_count_sensor_{nullptr};
+                sensor::Sensor *debug_send_count_sensor_{nullptr};
+            } debug_;
+
 
     };
 

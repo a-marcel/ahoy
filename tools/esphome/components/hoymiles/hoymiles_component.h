@@ -18,9 +18,10 @@ namespace hoymiles {
 
 
 typedef CircularBuffer<packet_t, PACKET_BUFFER_SIZE> BufferType;
-typedef HmRadio<RF24_CE_PIN, RF24_CS_PIN, RF24_IRQ_PIN, BufferType> RadioType;
+typedef HmRadio<DEF_RF24_CE_PIN, DEF_RF24_CS_PIN, BufferType> RadioType;
 typedef Inverter<float> InverterType;
 typedef HmSystem<RadioType, BufferType, MAX_NUM_INVERTERS, InverterType> HmSystemType;
+
 
 typedef struct {
     uint8_t invId;
@@ -71,10 +72,18 @@ class HoymilesComponent : public Component {
         time_t getTimestamp() { return this->timestamp_; }
         void setTimestamp(time_t timestamp ) { this->timestamp_ = timestamp; }
 
+        uint32_t getDebugRxFailed() { return this->mRxFailed; }
+        uint32_t getDebugRxSuccess() { return this->mRxSuccess; }
+        uint32_t getDebugFrameCount() { return this->mFrameCnt; }
+        uint32_t getDebugSendCount();
+
 
     protected:
         time_t timestamp_ = 0;
         uint8_t mMaxRetransPerPyld = 5;
+        uint32_t mRxFailed = 0;
+        uint32_t mRxSuccess = 0;
+        uint32_t mFrameCnt = 0;
 
         InternalGPIOPin *ce_pin_;
         InternalGPIOPin *cs_pin_;
@@ -89,9 +98,14 @@ class HoymilesComponent : public Component {
         uint16_t send_interval_;
         uint8_t amplifier_power_;
 
+        config_t mConfig;
+
+
 
     private:
         void processPayload(bool retransmit);
+        void processPayload(bool retransmit, uint8_t cmd = RealTimeRunData_Debug);
+        void resetPayload(Inverter<>* iv);
 
 };
 }  // namespace uart

@@ -26,9 +26,6 @@ namespace hoymiles {
     uint32_t mUptimeSecs;
     uint8_t mSendLastIvId;
     bool mMqttNewDataAvail;
-    uint32_t mRxFailed;
-    uint32_t mRxSuccess;
-    uint32_t mFrameCnt;
 
     uint32_t mUpdateTicker;
     uint16_t mUpdateInterval;
@@ -38,12 +35,13 @@ namespace hoymiles {
     uint16_t mNtpUpdateInterval;
 
     HmSystemType *mSys;
+    // config_t *mConfig = new config_t();
 
     invPayload_t mPayload[MAX_NUM_INVERTERS];
 
     static ICACHE_RAM_ATTR void handleIntr(void);
     static bool checkTicker(uint32_t *ticker, uint32_t interval);
-    static void processPayload(bool retransmit);
+    // static void processPayload(bool retransmit);
     static bool buildPayload(uint8_t id);
 
     static const char* C_dumpBuf(uint8_t buf[], uint8_t len);
@@ -55,15 +53,24 @@ namespace hoymiles {
         memset(mPayload, 0, (MAX_NUM_INVERTERS * sizeof(invPayload_t)));
 
         mSys = new HmSystemType();
+        memset(&mConfig, 0, sizeof(config_t));
 
-        mSys->Radio.AmplifierPower = this->amplifier_power_;
+        // nrf24
+        mConfig.sendInterval      = SEND_INTERVAL;
+        mConfig.maxRetransPerPyld = DEF_MAX_RETRANS_PER_PYLD;
+        mConfig.pinCs             = DEF_RF24_CS_PIN;
+        mConfig.pinCe             = DEF_RF24_CE_PIN;
+        mConfig.pinIrq            = DEF_RF24_IRQ_PIN;
+        mConfig.amplifierPower    = DEF_AMPLIFIERPOWER & 0x03;
 
-        mSys->Radio.pinCs  = this->cs_pin_->get_pin();
-        mSys->Radio.pinCe  = this->ce_pin_->get_pin();
-        mSys->Radio.pinIrq = this->irq_pin_->get_pin();
 
-        mSys->Radio.mSerialDebug = true;
+        mConfig.pinCs = this->cs_pin_->get_pin();
+        mConfig.pinCe = this->ce_pin_->get_pin();
+        mConfig.pinIrq = this->irq_pin_->get_pin();
+        mConfig.amplifierPower = this->amplifier_power_;
+        
 
+        mConfig.serialDebug = true;
         
         for(int i = 0; i < MAX_NUM_INVERTERS; i++) {
             if (this->inverters_[i].identification_ != NULL) {
@@ -75,9 +82,9 @@ namespace hoymiles {
                 ESP_LOGI(TAG, "Adding Inverter: %s ( %s )", this->inverters_[i].identification_, buffer);
             }
         }
-        mSys->setup();
+        mSys->setup(&mConfig);
 
-        attachInterrupt(digitalPinToInterrupt(mSys->Radio.pinIrq), handleIntr, FALLING);
+        attachInterrupt(digitalPinToInterrupt(this->irq_pin_->get_pin()), handleIntr, FALLING);
 
         mRxSuccess    = 0;
 
@@ -116,7 +123,7 @@ namespace hoymiles {
             // mTimestamp++;
             mUptimeSecs++;
 
-            time_t mTimestamp =this->getTimestamp();
+            time_t mTimestamp = this->getTimestamp();
 
 
             // mTimestamp++;
@@ -161,7 +168,25 @@ namespace hoymiles {
 
                         Inverter<> *iv = mSys->findInverter(&p->packet[1]);
                         if(NULL != iv&& p->packet[0] == (TX_REQ_INFO + 0x80)) { // response from get all information command
-                            
+                            DPRINTLN(DBG_DEBUG, F("Response from info request received"));
+                            uint8_t *pid = &p->packet[9];
+                            if (*pid == 0x00) {
+                                ESP_LOGD(TAG, "fragment number zero received and ignored");
+                            } else {
+                                if((*pid & 0x7F) < 5) {
+                                    memcpy(mPayload[iv->id].data[(*pid & 0x7F) - 1], &p->packet[10], len-11);
+                                    mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
+                                }
+
+                                if((*pid & 0x80) == 0x80) { // Last packet
+                                    if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
+                                        mPayload[iv->id].maxPackId = (*pid & 0x7f);
+
+                                        if(*pid > 0x81)
+                                            mLastPacketId = *pid;
+                                }
+                            }
+
                             switch (mSys->InfoCmd){
                                 case InverterDevInform_Simple:
                                 {
@@ -195,23 +220,6 @@ namespace hoymiles {
                                 }
                                 case RealTimeRunData_Debug:
                                 {
-                                    uint8_t *pid = &p->packet[9];
-                                    if (*pid == 0x00) {
-                                        ESP_LOGD(TAG, "fragment number zero received and ignored");
-                                    } else {
-                                        if((*pid & 0x7F) < 5) {
-                                            memcpy(mPayload[iv->id].data[(*pid & 0x7F) - 1], &p->packet[10], len-11);
-                                            mPayload[iv->id].len[(*pid & 0x7F) - 1] = len-11;
-                                        }
-
-                                        if((*pid & 0x80) == 0x80) { // Last packet
-                                            if((*pid & 0x7f) > mPayload[iv->id].maxPackId)
-                                                mPayload[iv->id].maxPackId = (*pid & 0x7f);
-
-                                                if(*pid > 0x81)
-                                                    mLastPacketId = *pid;
-                                        }
-                                    }
                                     break;
                                 }
                             }
@@ -250,7 +258,7 @@ namespace hoymiles {
             yield();
 
             if (rxRdy) {
-                processPayload(true);
+                processPayload(true, mSys->InfoCmd);
             }
         }
 
@@ -276,7 +284,7 @@ namespace hoymiles {
 
                     if(NULL != iv) {
                         if(!mPayload[iv->id].complete)
-                            processPayload(false);
+                            processPayload(false, mSys->InfoCmd);
 
                         if(!mPayload[iv->id].complete) {
                             mRxFailed++;
@@ -287,16 +295,10 @@ namespace hoymiles {
                         }
 
                         // reset payload data
-                        memset(mPayload[iv->id].len, 0, MAX_PAYLOAD_ENTRIES);
-                        mPayload[iv->id].retransmits = 0;
-                        mPayload[iv->id].maxPackId = 0;
-                        mPayload[iv->id].complete  = false;
-                        mPayload[iv->id].requested = true;
-                        mPayload[iv->id].ts = this->getTimestamp();
-
-                        ESP_LOGV(TAG, "Setting timestamp: %i", this->getTimestamp());
+                        resetPayload(iv);
 
                         yield();
+                        ESP_LOGV(TAG, "Setting timestamp: %i", this->getTimestamp());
 
                         // if(mSerialDebug) {
                             char buffer [50];
@@ -404,8 +406,11 @@ namespace hoymiles {
         return false;
     }
 
-
     void HoymilesComponent::processPayload(bool retransmit) {
+        processPayload(retransmit, RealTimeRunData_Debug);
+    }
+
+    void HoymilesComponent::processPayload(bool retransmit, uint8_t cmd) {
         // ESP_LOGD(TAG, "app::processPayload %i",mSys->getNumInverters() );
         for(uint8_t id = 0; id < mSys->getNumInverters(); id++) {
             Inverter<> *iv = mSys->getInverterByPos(id);
@@ -414,12 +419,13 @@ namespace hoymiles {
                     if(!buildPayload(iv->id)) {
                         if(mPayload[iv->id].requested) {
                             if(retransmit) {
-                                if(mPayload[iv->id].retransmits < mMaxRetransPerPyld) {
+                                if(mPayload[iv->id].retransmits < mConfig.maxRetransPerPyld) {
                                     mPayload[iv->id].retransmits++;
                                     if(mPayload[iv->id].maxPackId != 0) {
                                         for(uint8_t i = 0; i < (mPayload[iv->id].maxPackId-1); i ++) {
                                             if(mPayload[iv->id].len[i] == 0) {
                                                 ESP_LOGE(TAG, "while retrieving data: Frame %s missing: Request Retransmit", String(i+1));
+
                                                 mSys->Radio.sendCmdPacket(iv->radioId.u64, TX_REQ_INFO, (SINGLE_FRAME+i), true);
                                                 break; // only retransmit one frame per loop
                                             }
@@ -458,18 +464,37 @@ namespace hoymiles {
                         // mSys->Radio.dumpBuf(NULL, payload, offs);
 
                         mRxSuccess++;
+                        mSys->InfoCmd = RealTimeRunData_Debug; // On success set back to default
+
+                        iv->getAssignment(cmd); // choose the parser
 
                         for(uint8_t i = 0; i < iv->listLen; i++) {
-                            iv->addValue(i, payload);
+                            iv->addValue(i, payload, cmd);
                             yield();
                         }
-                        iv->doCalculations();
+                        iv->doCalculations(cmd);
                     }
                 }
                 yield();
             }
         }
     }
+
+    void HoymilesComponent::resetPayload(Inverter<>* iv)
+    {
+        // reset payload data
+        memset(mPayload[iv->id].len, 0, MAX_PAYLOAD_ENTRIES);
+        mPayload[iv->id].retransmits = 0;
+        mPayload[iv->id].maxPackId = 0;
+        mPayload[iv->id].complete = false;
+        mPayload[iv->id].requested = true;
+        mPayload[iv->id].ts = this->getTimestamp();
+    }
+
+    uint32_t HoymilesComponent::getDebugSendCount() {
+        return mSys->Radio.mSendCnt;
+    }
+
 
     static const char* C_dumpBuf(uint8_t buf[], uint8_t len) {
 
