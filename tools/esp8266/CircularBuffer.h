@@ -24,6 +24,9 @@
 #if defined(ESP8266) || defined(USE_ESP32)
 #define DISABLE_IRQ noInterrupts()
 #define RESTORE_IRQ interrupts()
+#elif defined(ESP32)
+#define DISABLE_IRQ noInterrupts()
+#define RESTORE_IRQ interrupts()
 #else
 #define DISABLE_IRQ       \
     uint8_t sreg = SREG;    \
