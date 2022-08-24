@@ -185,6 +185,7 @@ CONF_VALUE_RX_FAILED = "rx_failed"
 CONF_VALUE_RX_SUCCESS = "rx_success"
 CONF_VALUE_RX_FRAMES_COUNT = "rx_frames_count"
 CONF_VALUE_SEND_COUNT = "send_count"
+CONF_VALUE_ALARM_MESSAGES_COUNT = "alarm_messages_count"
 
 HOYMILES_DEBUG_SCHEMA = cv.Schema(
     {
@@ -192,6 +193,7 @@ HOYMILES_DEBUG_SCHEMA = cv.Schema(
         cv.Optional(CONF_VALUE_RX_SUCCESS): sensor.sensor_schema(),
         cv.Optional(CONF_VALUE_RX_FRAMES_COUNT): sensor.sensor_schema(),
         cv.Optional(CONF_VALUE_SEND_COUNT): sensor.sensor_schema(),
+        cv.Optional(CONF_VALUE_ALARM_MESSAGES_COUNT): sensor.sensor_schema(),
     }
 )
 
@@ -302,5 +304,9 @@ def to_code(config):
 
         if CONF_VALUE_SEND_COUNT in debug_conf:
             sens = yield sensor.new_sensor(debug_conf[CONF_VALUE_SEND_COUNT])
-            cg.add(var.set_debug_send_count_sensor(sens))        
+            cg.add(var.set_debug_send_count_sensor(sens))
+        
+        if CONF_VALUE_ALARM_MESSAGES_COUNT in debug_conf:
+            sens = yield sensor.new_sensor(debug_conf[CONF_VALUE_ALARM_MESSAGES_COUNT])
+            cg.add(var.set_debug_alarm_messages_count_sensor(sens))
 

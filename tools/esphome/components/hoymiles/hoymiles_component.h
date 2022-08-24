@@ -104,7 +104,6 @@ class HoymilesComponent : public Component {
 
     private:
         void processPayload(bool retransmit);
-        void processPayload(bool retransmit, uint8_t cmd = RealTimeRunData_Debug);
         void resetPayload(Inverter<>* iv);
 
 };

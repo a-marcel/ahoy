@@ -186,44 +186,8 @@ namespace hoymiles {
                                             mLastPacketId = *pid;
                                 }
                             }
-
-                            switch (mSys->InfoCmd){
-                                case InverterDevInform_Simple:
-                                {
-                                    DPRINT(DBG_INFO, "Response from inform simple\n");
-                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
-                                    break;
-                                }
-                                case InverterDevInform_All:
-                                {
-                                    DPRINT(DBG_INFO, "Response from inform all\n");
-                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
-                                    break;
-                                }
-                                case GetLossRate:
-                                {
-                                    DPRINT(DBG_INFO, "Response from get loss rate\n");
-                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
-                                    break;
-                                }
-                                case AlarmData:
-                                {
-                                    DPRINT(DBG_INFO, "Response from AlarmData\n");
-                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
-                                    break;
-                                }
-                                case AlarmUpdate:
-                                {
-                                    DPRINT(DBG_INFO, "Response from AlarmUpdate\n");
-                                    mSys->InfoCmd = RealTimeRunData_Debug; // Set back to default
-                                    break;
-                                }
-                                case RealTimeRunData_Debug:
-                                {
-                                    break;
-                                }
-                            }
                         }
+
                         if(NULL != iv && p->packet[0] == (TX_REQ_DEVCONTROL + 0x80)) { // response from dev control command
                             ESP_LOGD(TAG, "Response from devcontrol request received");
                             iv->devControlRequest = false; 
@@ -250,7 +214,7 @@ namespace hoymiles {
                                     iv->devControlCmd = Init;
                                     break;
                             }
-                        }                     
+                        }
                     }
                 }
                 mSys->BufCtrl.popBack();
@@ -258,7 +222,7 @@ namespace hoymiles {
             yield();
 
             if (rxRdy) {
-                processPayload(true, mSys->InfoCmd);
+                processPayload(true);
             }
         }
 
@@ -284,7 +248,7 @@ namespace hoymiles {
 
                     if(NULL != iv) {
                         if(!mPayload[iv->id].complete)
-                            processPayload(false, mSys->InfoCmd);
+                            processPayload(false);
 
                         if(!mPayload[iv->id].complete) {
                             mRxFailed++;
@@ -313,8 +277,9 @@ namespace hoymiles {
 
                             // ToDo: Only set Request to false if succesful executed
                             mSys->Radio.sendControlPacket(iv->radioId.u64,iv->devControlCmd ,iv->powerLimit);
+                            iv->enqueCommand<InfoCommand>(SystemConfigPara);
                         } else {
-                            mSys->Radio.sendTimePacket(iv->radioId.u64, mSys->InfoCmd, mPayload[iv->id].ts,iv->alarmMesIndex);
+                            mSys->Radio.sendTimePacket(iv->radioId.u64, iv->getQueuedCmd(), mPayload[iv->id].ts,iv->alarmMesIndex);
 
                             mRxTicker = 0;
                         }
@@ -407,10 +372,6 @@ namespace hoymiles {
     }
 
     void HoymilesComponent::processPayload(bool retransmit) {
-        processPayload(retransmit, RealTimeRunData_Debug);
-    }
-
-    void HoymilesComponent::processPayload(bool retransmit, uint8_t cmd) {
         // ESP_LOGD(TAG, "app::processPayload %i",mSys->getNumInverters() );
         for(uint8_t id = 0; id < mSys->getNumInverters(); id++) {
             Inverter<> *iv = mSys->getInverterByPos(id);
@@ -437,7 +398,7 @@ namespace hoymiles {
                                         if(0x00 != mLastPacketId)
                                             mSys->Radio.sendCmdPacket(iv->radioId.u64, TX_REQ_INFO, mLastPacketId, true);
                                         else
-                                            mSys->Radio.sendTimePacket(iv->radioId.u64, mSys->InfoCmd, mPayload[iv->id].ts,iv->alarmMesIndex);
+                                            mSys->Radio.sendTimePacket(iv->radioId.u64, iv->getQueuedCmd(), mPayload[iv->id].ts,iv->alarmMesIndex);
 
                                     }
                                     mSys->Radio.switchRxCh(100);
@@ -464,15 +425,13 @@ namespace hoymiles {
                         // mSys->Radio.dumpBuf(NULL, payload, offs);
 
                         mRxSuccess++;
-                        mSys->InfoCmd = RealTimeRunData_Debug; // On success set back to default
 
-                        iv->getAssignment(cmd); // choose the parser
-
+                        iv->getAssignment(); // choose the parser
                         for(uint8_t i = 0; i < iv->listLen; i++) {
-                            iv->addValue(i, payload, cmd);
+                            iv->addValue(i, payload);
                             yield();
                         }
-                        iv->doCalculations(cmd);
+                        iv->doCalculations();
                     }
                 }
                 yield();

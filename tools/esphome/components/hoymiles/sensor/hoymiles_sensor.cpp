@@ -64,6 +64,9 @@ namespace hoymiles {
                         else if (iv->assign[i].fieldId == FLD_PRA && this->grid_.reactive_power_sensor_ != nullptr) {
                             this->grid_.reactive_power_sensor_->publish_state(iv->getValue(i));
                         }
+                        else if (iv->assign[i].fieldId == FLD_ALARM_MES_ID && this->debug_.debug_alarm_messages_count_sensor_ != nullptr) {
+                            this->debug_.debug_alarm_messages_count_sensor_->publish_state(iv->getValue(i));
+                        }
 
 
                     } else if (iv->assign[i].ch > 0) {

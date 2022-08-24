@@ -44,7 +44,7 @@ namespace hoymiles {
             void set_debug_rx_success_sensor(sensor::Sensor *obj) { this->debug_.debug_rx_success_sensor_ = obj; }
             void set_debug_rx_frames_count_sensor(sensor::Sensor *obj) { this->debug_.debug_rx_frames_count_sensor_ = obj; }
             void set_debug_send_count_sensor(sensor::Sensor *obj) { this->debug_.debug_send_count_sensor_ = obj; }
-
+            void set_debug_alarm_messages_count_sensor(sensor::Sensor *obj) { this->debug_.debug_alarm_messages_count_sensor_ = obj; }
 
         protected:
             char *inverter_id_;
@@ -80,6 +80,7 @@ namespace hoymiles {
                 sensor::Sensor *debug_rx_success_sensor_{nullptr};
                 sensor::Sensor *debug_rx_frames_count_sensor_{nullptr};
                 sensor::Sensor *debug_send_count_sensor_{nullptr};
+                sensor::Sensor *debug_alarm_messages_count_sensor_{nullptr};
             } debug_;
 
 
